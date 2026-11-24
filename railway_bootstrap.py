@@ -20,6 +20,9 @@ import django
 import psycopg
 
 LOCK_ID = 7_312_125_001
+APP_DIR = "/usr/src/app"
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
 
 
 def log(msg):
