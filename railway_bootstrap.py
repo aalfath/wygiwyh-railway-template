@@ -5,8 +5,8 @@ Runs before the public port opens:
   2. takes a Postgres advisory lock so two overlapping deploys never migrate
      at the same time (polls pg_try_advisory_lock instead of blocking),
   3. runs the migrations quietly,
-  4. creates the admin from ADMIN_EMAIL / ADMIN_PASSWORD once,
-  5. checks that a superuser exists, and exits non-zero if not.
+  4. creates the admin from ADMIN_EMAIL / ADMIN_PASSWORD when no active
+     admin exists yet (first boot), and exits non-zero if it can't.
 
 Local sign-up is off in WYGIWYH (accounts are made by an admin), so the admin
 created here is the only way in until you add users.
@@ -76,13 +76,27 @@ def main():
     User = get_user_model()
     email = os.environ.get("ADMIN_EMAIL", "").strip()
     password = os.environ.get("ADMIN_PASSWORD", "")
-    if email and password:
+    admins = User.objects.filter(is_superuser=True, is_active=True)
+    if admins.exists():
+        # Created on an earlier start (or by hand). The variables are only
+        # used once, so changing the admin's email or password in WYGIWYH
+        # sticks across restarts.
+        log(f"{admins.count()} active admin account(s) already exist; not touching them")
+    elif email and password:
+        from django.core.exceptions import ValidationError
+        from django.core.validators import validate_email
+
+        try:
+            validate_email(email)
+        except ValidationError:
+            log(f"ADMIN_EMAIL '{email}' is not a valid email address (WYGIWYH signs in by email); fix it and redeploy")
+            sys.exit(1)
         if User.objects.filter(email__iexact=email).exists():
-            log(f"admin {email} already exists; leaving its password alone")
-        else:
-            User.objects.create_superuser(email=email, password=password)
-            log(f"created admin {email}")
-    if not User.objects.filter(is_superuser=True, is_active=True).exists():
+            log(f"a user {email} exists but is not an active admin; refusing to change it")
+            sys.exit(1)
+        User.objects.create_superuser(email=email, password=password)
+        log(f"created admin {email} (password from ADMIN_PASSWORD)")
+    else:
         log("no active admin account exists and ADMIN_EMAIL/ADMIN_PASSWORD are not both set; refusing to start")
         sys.exit(1)
 
