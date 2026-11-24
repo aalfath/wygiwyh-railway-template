@@ -39,9 +39,7 @@ if mode == "create":
     n = random.randint(100, 999)
     c = s.post(base + "/api/currencies/", json={"code": f"T{n}", "name": f"Smoke Dollar {n}", "decimal_places": 2, "prefix": "T$ "}, headers=h, timeout=30)
     assert c.status_code == 201, c.text[:300]
-    a = s.post(base + "/api/accounts/", json={"name": "Smoke Account", "currency_id": c.json()["id"]}, headers=h, timeout=30)
-    if a.status_code != 201:
-        a = s.post(base + "/api/accounts/", json={"name": "Smoke Account", "currency": c.json()["id"]}, headers=h, timeout=30)
+    a = s.post(base + "/api/accounts/", json={"name": f"Smoke Account {n}", "currency_id": c.json()["id"]}, headers=h, timeout=30)
     assert a.status_code == 201, a.text[:300]
     t = s.post(base + "/api/transactions/", json={"account_id": a.json()["id"], "type": "EX", "is_paid": True, "date": "2026-11-24",
                                                     "reference_date": "2026-11", "amount": "12.34", "description": "smoke coffee"},
