@@ -5,6 +5,7 @@ an earlier run.
 
 usage: python smoke.py BASE_URL EMAIL PASSWORD [create|verify]
 """
+import random
 import re
 import sys
 
@@ -35,7 +36,8 @@ csrf = s.cookies.get("csrftoken")
 h = {"X-CSRFToken": csrf, "Referer": base + "/"}
 
 if mode == "create":
-    c = s.post(base + "/api/currencies/", json={"code": "TST", "name": "Smoke Dollar", "decimal_places": 2, "prefix": "T$ "}, headers=h, timeout=30)
+    n = random.randint(100, 999)
+    c = s.post(base + "/api/currencies/", json={"code": f"T{n}", "name": f"Smoke Dollar {n}", "decimal_places": 2, "prefix": "T$ "}, headers=h, timeout=30)
     assert c.status_code == 201, c.text[:300]
     a = s.post(base + "/api/accounts/", json={"name": "Smoke Account", "currency_id": c.json()["id"]}, headers=h, timeout=30)
     if a.status_code != 201:
