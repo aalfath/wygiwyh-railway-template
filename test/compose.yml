@@ -1,20 +1,21 @@
-# Local test kit (not used by Railway): app + Postgres 17 + MinIO standing in for a Railway Bucket.
+# Local test kit (not used by Railway): app + Postgres 17 + RustFS standing in for a Railway Bucket.
 services:
   db:
     image: postgres:17
     environment: {POSTGRES_USER: wygiwyh, POSTGRES_PASSWORD: localtestpw, POSTGRES_DB: wygiwyh}
     volumes: [pg:/var/lib/postgresql/data]
   s3:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
-    command: server /data
-    environment: {MINIO_ROOT_USER: localkey, MINIO_ROOT_PASSWORD: localsecret123}
+    image: rustfs/rustfs:1.0.5
+    environment: {RUSTFS_ACCESS_KEY: localkey, RUSTFS_SECRET_KEY: localsecret123, RUSTFS_ADDRESS: "0.0.0.0:9000"}
   mkbucket:
-    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    build: ..
     depends_on: [s3]
-    entrypoint: sh -c 'until mc alias set m http://s3:9000 localkey localsecret123; do sleep 1; done; mc mb -p m/wyg'
+    entrypoint: ["/app/.venv/bin/python", "-c", "import boto3,time\nfor i in range(60):\n  try:\n    boto3.client('s3',endpoint_url='http://s3:9000',aws_access_key_id='localkey',aws_secret_access_key='localsecret123',region_name='us-east-1').create_bucket(Bucket='wyg'); print('bucket ok'); break\n  except Exception as e:\n    print(e); time.sleep(2)"]
   web:
     build: ..
-    depends_on: [db, mkbucket]
+    depends_on:
+      db: {condition: service_started}
+      mkbucket: {condition: service_completed_successfully}
     ports: ["8080:8080"]
     mem_limit: 512m
     cpus: 1
