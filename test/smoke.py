@@ -41,7 +41,7 @@ if mode == "create":
     if a.status_code != 201:
         a = s.post(base + "/api/accounts/", json={"name": "Smoke Account", "currency": c.json()["id"]}, headers=h, timeout=30)
     assert a.status_code == 201, a.text[:300]
-    t = s.post(base + "/api/transactions/", json={"account": a.json()["id"], "type": "EX", "is_paid": True, "date": "2026-11-24",
+    t = s.post(base + "/api/transactions/", json={"account_id": a.json()["id"], "type": "EX", "is_paid": True, "date": "2026-11-24",
                                                     "reference_date": "2026-11", "amount": "12.34", "description": "smoke coffee"},
                headers=h, timeout=30)
     assert t.status_code == 201, t.text[:300]
