@@ -1,0 +1,39 @@
+# Local test kit (not used by Railway): app + Postgres 17 + MinIO standing in for a Railway Bucket.
+services:
+  db:
+    image: postgres:17
+    environment: {POSTGRES_USER: wygiwyh, POSTGRES_PASSWORD: localtestpw, POSTGRES_DB: wygiwyh}
+    volumes: [pg:/var/lib/postgresql/data]
+  s3:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment: {MINIO_ROOT_USER: localkey, MINIO_ROOT_PASSWORD: localsecret123}
+  mkbucket:
+    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on: [s3]
+    entrypoint: sh -c 'until mc alias set m http://s3:9000 localkey localsecret123; do sleep 1; done; mc mb -p m/wyg'
+  web:
+    build: ..
+    depends_on: [db, mkbucket]
+    ports: ["8080:8080"]
+    mem_limit: 512m
+    cpus: 1
+    environment:
+      PORT: "8080"
+      SECRET_KEY: local-test-secret-key-0123456789abcdef
+      SQL_HOST: db
+      SQL_PORT: "5432"
+      SQL_USER: wygiwyh
+      SQL_PASSWORD: localtestpw
+      SQL_DATABASE: wygiwyh
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: LocalAdminPw123
+      HTTPS_ENABLED: "false"
+      URL: http://localhost:8080
+      AWS_STORAGE_BUCKET_NAME: wyg
+      AWS_ENDPOINT_URL: http://s3:9000
+      AWS_S3_REGION_NAME: us-east-1
+      AWS_ACCESS_KEY_ID: localkey
+      AWS_SECRET_ACCESS_KEY: localsecret123
+      AWS_S3_ADDRESSING_STYLE: path
+volumes: {pg: {}}
