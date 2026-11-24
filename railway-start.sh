@@ -76,7 +76,7 @@ trap stop TERM INT
 python manage.py procrastinate worker &
 pids+=($!)
 gunicorn WYGIWYH.wsgi:application --bind "0.0.0.0:${PORT}" --timeout 600 \
-  --workers "$WEB_CONCURRENCY" --threads "$WEB_THREADS" --access-logfile - &
+  --workers "$WEB_CONCURRENCY" --threads "$WEB_THREADS" --no-control-socket --access-logfile - &
 pids+=($!)
 
 # Exit non-zero as soon as either process stops, so Railway restarts us.
